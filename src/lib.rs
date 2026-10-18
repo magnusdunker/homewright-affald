@@ -8,7 +8,9 @@
 
 pub mod api;
 pub mod kommuner;
+pub mod pdf;
 pub mod schedule;
+pub mod sources;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -165,9 +167,6 @@ impl Integration for Affald {
         let address = entry.get_str("address").unwrap_or(&id).to_string();
         let client = Client::new(entry.get_str("base_url"));
 
-        if let Err(e) = client.prepare(k, &id).await {
-            warn!("{}: {e}", k.provider.label());
-        }
         let pickups = client.pickups(k, &id).await.map_err(|e| Error::not_ready(format!("{}: {e}", k.provider.label())))?;
 
         let device = json!({

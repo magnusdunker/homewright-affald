@@ -40,11 +40,28 @@ pub fn clean(name: &str) -> String {
             s = head.to_string();
         }
     }
+    // "Restaffald hver 2. uge, bolig", "madaffald, ugetømning", "660L Rest
+    // Tømmes hver 2 uge": how often belongs in the dates, not the name
+    let lower = s.to_lowercase();
+    let cut = [" hver ", " tømmes ", ", ugetømning", " ugetømning", ", tømning", ", bolig"].iter().filter_map(|p| lower.find(p)).min();
+    if let Some(at) = cut.filter(|at| *at > 0) {
+        s.truncate(at);
+    }
     let words: Vec<&str> = s.split_whitespace().collect();
     let mut kept: Vec<&str> = vec![];
     let mut i = 0;
     while i < words.len() {
         let w = words[i];
+        // "240 ltr supl. cont plast", "660 L beholder til restaffald"
+        let lw = w.to_lowercase();
+        if matches!(lw.as_str(), "cont" | "cont." | "supl." | "suppleringscont" | "suppleringscontainer") {
+            i += 1;
+            continue;
+        }
+        if lw == "beholder" && words.get(i + 1).map(|n| n.to_lowercase()) == Some("til".into()) {
+            i += 2;
+            continue;
+        }
         let unit = words.get(i + 1).map(|n| matches!(n.to_lowercase().as_str(), "l" | "l." | "ltr" | "ltr." | "liter" | "m3"));
         if w.chars().all(|c| c.is_ascii_digit()) && unit == Some(true) {
             i += 2;

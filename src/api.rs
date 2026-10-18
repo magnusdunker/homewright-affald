@@ -32,6 +32,29 @@ pub enum Provider {
     /// The kommune's number and token.
     OpenExperienceLive(u8, &'static str),
     Odense,
+    /// Albertslund, Furesø, Herlev, Ishøj and Vallensbæk.
+    Vestfor,
+    /// Aarhus.
+    Kredslob,
+    /// Odder and Skanderborg.
+    RenoSyd,
+    /// Kolding.
+    Infovision,
+    /// Haderslev.
+    Provas,
+    /// Norddjurs and Syddjurs.
+    RenoDjurs,
+    /// Herning.
+    AffaldWeb,
+    /// Host and path of the kommune's Renomatic self-service.
+    Renomatic(&'static str),
+    /// The utility's name in WasteWatch, e.g. Tønder Forsyning's `tonfor`.
+    WasteWatch(&'static str),
+    /// The kommune's calendar on affaldonline.dk, which has the dates only.
+    AffaldOnlineWeb(&'static str),
+    /// The kommune's calendar on affaldonline.dk, read from its PDF.
+    AffaldOnlinePdf(&'static str),
+    Copenhagen,
 }
 
 impl Provider {
@@ -39,9 +62,19 @@ impl Provider {
         match self {
             Provider::Renoweb => "RenoWeb",
             Provider::PerfectWaste => "Perfect Waste",
-            Provider::AffaldOnline(_) => "AffaldOnline",
+            Provider::AffaldOnline(_) | Provider::AffaldOnlineWeb(_) | Provider::AffaldOnlinePdf(_) => "AffaldOnline",
             Provider::OpenExperience(_) | Provider::OpenExperienceLive(..) => "OpenExperience",
             Provider::Odense => "Odense Renovation",
+            Provider::Vestfor => "Vestforbrænding",
+            Provider::Kredslob => "Kredsløb",
+            Provider::RenoSyd => "RenoSyd",
+            Provider::Infovision => "Infovision",
+            Provider::Provas => "Provas",
+            Provider::RenoDjurs => "Reno Djurs",
+            Provider::AffaldWeb => "Affaldsweb",
+            Provider::Renomatic(_) => "Renomatic",
+            Provider::WasteWatch(_) => "WasteWatch",
+            Provider::Copenhagen => "Affald KBH",
         }
     }
 }
@@ -68,7 +101,7 @@ impl std::fmt::Display for ApiError {
     }
 }
 
-fn err(m: impl std::fmt::Display) -> ApiError {
+pub(crate) fn err(m: impl std::fmt::Display) -> ApiError {
     ApiError(m.to_string())
 }
 
@@ -83,7 +116,7 @@ pub fn split_address(q: &str) -> (String, String) {
 }
 
 /// Percent-encode one path segment.
-fn segment(s: &str) -> String {
+pub(crate) fn segment(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || b"-._~".contains(&b) {
@@ -97,7 +130,7 @@ fn segment(s: &str) -> String {
 
 #[derive(Clone)]
 pub struct Client {
-    http: reqwest::Client,
+    pub(crate) http: reqwest::Client,
     /// Sends every request here instead, keeping the path. For tests.
     base: Option<String>,
 }
@@ -110,34 +143,51 @@ impl Default for Client {
 
 impl Client {
     pub fn new(base: Option<&str>) -> Self {
-        let http = reqwest::Client::builder()
-            .user_agent(concat!("Homewright-affald/", env!("CARGO_PKG_VERSION")))
+        Self { http: Self::builder().use_rustls_tls().build().unwrap_or_default(), base: base.map(|b| b.trim_end_matches('/').to_string()) }
+    }
+
+    fn builder() -> reqwest::ClientBuilder {
+        // some of the servers answer browsers only
+        reqwest::Client::builder()
+            .user_agent(concat!("Mozilla/5.0 (compatible; Homewright-affald/", env!("CARGO_PKG_VERSION"), ")"))
             .timeout(Duration::from_secs(30))
-            .build()
-            .unwrap_or_default();
-        Self { http, base: base.map(|b| b.trim_end_matches('/').to_string()) }
+    }
+
+    /// A client of its own for Vestforbrænding: it keeps cookies, since the
+    /// site remembers the chosen address in the session, and it uses the
+    /// system's TLS, since the server offers only the CBC ciphers that
+    /// rustls leaves out.
+    pub(crate) fn vestfor_client(&self) -> reqwest::Client {
+        Self::builder().use_native_tls().cookie_store(true).build().unwrap_or_default()
     }
 
     /// `at` is host and path prefix, e.g. `servicesgh.renoweb.dk/v1_13/`.
-    fn url(&self, at: &str, rest: &str) -> String {
+    pub(crate) fn url(&self, at: &str, rest: &str) -> String {
         match &self.base {
             Some(b) => format!("{b}/{}{rest}", at.split_once('/').map(|(_, p)| p).unwrap_or("")),
             None => format!("https://{at}{rest}"),
         }
     }
 
-    /// The body as text. Some servers send Latin-1, so bad UTF-8 is replaced.
-    async fn text(&self, req: reqwest::RequestBuilder) -> Result<String, ApiError> {
+    /// The body as text. Some servers send Latin-1 without saying so.
+    pub(crate) async fn text(&self, req: reqwest::RequestBuilder) -> Result<String, ApiError> {
+        let bytes = self.bytes(req).await?;
+        Ok(match String::from_utf8(bytes) {
+            Ok(s) => s,
+            Err(e) => e.into_bytes().iter().map(|&b| b as char).collect(),
+        })
+    }
+
+    pub(crate) async fn bytes(&self, req: reqwest::RequestBuilder) -> Result<Vec<u8>, ApiError> {
         let resp = req.send().await.map_err(|e| err(e.without_url()))?;
         let status = resp.status();
         if !status.is_success() {
             return Err(err(format!("HTTP {status}")));
         }
-        let bytes = resp.bytes().await.map_err(|e| err(e.without_url()))?;
-        Ok(String::from_utf8_lossy(&bytes).into_owned())
+        Ok(resp.bytes().await.map_err(|e| err(e.without_url()))?.to_vec())
     }
 
-    async fn json(&self, req: reqwest::RequestBuilder) -> Result<Value, ApiError> {
+    pub(crate) async fn json(&self, req: reqwest::RequestBuilder) -> Result<Value, ApiError> {
         let text = self.text(req).await?;
         serde_json::from_str(&text).map_err(|e| err(format!("ugyldig JSON: {e}")))
     }
@@ -162,6 +212,16 @@ impl Client {
                 let req = self.http.get(self.url(ODENSE, "CommunicationHouseNumbers")).query(&[("addressString", query)]);
                 list(&self.json(req).await?, "AddressNo", "FullAddress")
             }
+            Provider::Vestfor => self.vestfor_search(k.code, query).await?,
+            Provider::Kredslob => self.av_search(k.code, query, true).await?,
+            Provider::RenoSyd | Provider::WasteWatch(_) => self.av_search(k.code, query, false).await?,
+            Provider::Infovision => self.infovision_search(query).await?,
+            Provider::Provas => self.provas_search(query).await?,
+            Provider::RenoDjurs => self.renodjurs_search(query).await?,
+            Provider::AffaldWeb => self.affaldweb_search(query).await?,
+            Provider::Renomatic(at) => self.renomatic_search(at, query).await?,
+            Provider::AffaldOnlineWeb(slug) | Provider::AffaldOnlinePdf(slug) => self.affaldonline_web_search(slug, query).await?,
+            Provider::Copenhagen => self.copenhagen_search(query).await?,
         };
         if let Some(zip) = zip.map(str::trim).filter(|z| !z.is_empty()) {
             found.retain(|a| a.name.contains(zip));
@@ -243,16 +303,6 @@ impl Client {
             .header("X-Client-Version", "22")
     }
 
-    /// What a system needs before it lists pickups. Perfect Waste only
-    /// knows an address its app has looked up once.
-    pub async fn prepare(&self, k: &Kommune, id: &str) -> Result<(), ApiError> {
-        if k.provider == Provider::PerfectWaste {
-            let body = json!({ "data": { "addressID": id, "municipality": k.code, "caretakerCode": null, "isCaretaker": null } });
-            self.json(self.http.post(self.url(PERFECT_WASTE, "fetchAddressAndSaveToDb")).json(&body)).await?;
-        }
-        Ok(())
-    }
-
     /// The coming pickups for an address. RenoWeb gives only the next one
     /// for each container.
     pub async fn pickups(&self, k: &Kommune, id: &str) -> Result<Vec<Pickup>, ApiError> {
@@ -265,8 +315,16 @@ impl Client {
             }
             Provider::PerfectWaste => {
                 let body = json!({ "data": { "addressID": id, "municipality": k.code } });
-                let v = self.json(self.http.post(self.url(PERFECT_WASTE, "getAddressCollections")).json(&body)).await?;
-                Ok(parse_perfect_waste(&v))
+                let url = self.url(PERFECT_WASTE, "getAddressCollections");
+                let mut found = parse_perfect_waste(&self.json(self.http.post(&url).json(&body)).await?);
+                if found.is_empty() {
+                    // Perfect Waste knows only addresses its app has looked up
+                    // once; look this one up and ask again
+                    let save = json!({ "data": { "addressID": id, "municipality": k.code, "caretakerCode": null, "isCaretaker": null } });
+                    self.json(self.http.post(self.url(PERFECT_WASTE, "fetchAddressAndSaveToDb")).json(&save)).await?;
+                    found = parse_perfect_waste(&self.json(self.http.post(&url).json(&body)).await?);
+                }
+                Ok(found)
             }
             Provider::AffaldOnline(client_id) => {
                 let v = self.json(self.affaldonline(client_id, "collections").query(&[("groupBy", "date"), ("addressId", id)])).await?;
@@ -285,12 +343,24 @@ impl Client {
                 let ics = self.text(self.http.get(self.url(ODENSE, "GetICalCalendar")).query(&[("addressNo", id)])).await?;
                 Ok(parse_ics(&ics))
             }
+            Provider::Vestfor => self.vestfor_pickups(id).await,
+            Provider::Kredslob => self.kredslob_pickups(id).await,
+            Provider::RenoSyd => self.renosyd_pickups(id).await,
+            Provider::Infovision => self.infovision_pickups(id).await,
+            Provider::Provas => self.provas_pickups(id).await,
+            Provider::RenoDjurs => self.renodjurs_pickups(id).await,
+            Provider::AffaldWeb => self.affaldweb_pickups(id).await,
+            Provider::Renomatic(at) => self.renomatic_pickups(at, id).await,
+            Provider::WasteWatch(utility) => self.wastewatch_pickups(utility, id).await,
+            Provider::AffaldOnlineWeb(slug) => self.affaldonline_web_pickups(slug, id).await,
+            Provider::AffaldOnlinePdf(slug) => self.affaldonline_pdf_pickups(slug, id).await,
+            Provider::Copenhagen => self.copenhagen_pickups(id).await,
         }
     }
 }
 
 /// An id that may be a number or a string.
-fn id_of(v: &Value) -> Option<String> {
+pub(crate) fn id_of(v: &Value) -> Option<String> {
     match v {
         Value::String(s) if !s.is_empty() => Some(s.clone()),
         Value::Number(n) => Some(n.to_string()),
@@ -298,7 +368,7 @@ fn id_of(v: &Value) -> Option<String> {
     }
 }
 
-fn list(v: &Value, id: &str, name: &str) -> Vec<Address> {
+pub(crate) fn list(v: &Value, id: &str, name: &str) -> Vec<Address> {
     v.as_array()
         .into_iter()
         .flatten()
@@ -307,11 +377,11 @@ fn list(v: &Value, id: &str, name: &str) -> Vec<Address> {
 }
 
 /// "2026-10-28", "2026-10-28T00:00:00.000Z": the date as written.
-fn date(v: &Value) -> Option<NaiveDate> {
+pub(crate) fn date(v: &Value) -> Option<NaiveDate> {
     NaiveDate::parse_from_str(v.as_str()?.get(..10)?, "%Y-%m-%d").ok()
 }
 
-fn str_of(v: &Value) -> Option<String> {
+pub(crate) fn str_of(v: &Value) -> Option<String> {
     v.as_str().map(str::trim).filter(|s| !s.is_empty()).map(String::from)
 }
 

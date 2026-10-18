@@ -17,6 +17,29 @@ async fn town_halls() {
         ("Holstebro", "Kirkestræde 11", "7500"),
         ("Fredericia", "Gothersgade 20", ""),
         ("Odense", "Flakhaven 2", ""),
+        ("Vallensbæk", "Vallensbæk Stationstorv 100", ""),
+        ("Furesø", "Stiager 2", ""),
+        ("Herlev", "Herlev Bygade 90", ""),
+        ("Ishøj", "Ishøj Store Torv 20", ""),
+        ("Albertslund", "Roskildevej 78", ""),
+        ("Aarhus", "Hack Kampmanns Plads 2", ""),
+        ("Odder", "Rådhusgade 3", ""),
+        ("Skanderborg", "Adelgade 1", ""),
+        ("Kolding", "Slotsgade 2", ""),
+        ("Haderslev", "Gåskærgade 2", ""),
+        ("Syddjurs", "Lundbergsvej 2", ""),
+        ("Norddjurs", "Torvet 3", "8500"),
+        ("Herning", "Torvet 5", ""),
+        ("Ikast-Brande", "Bøgildvej 6", ""),
+        ("Frederikshavn", "Rådhus Alle 17", ""),
+        ("Vesthimmerlands", "Vestergade 1", "9600"),
+        ("Tønder", "Kongevej 6", ""),
+        ("Silkeborg", "Søvej 1", "8600"),
+        ("Sorø", "Rådhusvej 3", ""),
+        ("Middelfart", "Nytorv 1", ""),
+        ("Nyborg", "Torvet 4", ""),
+        ("Fanø", "Skolevej 5", ""),
+        ("København", "Nørrebrogade 10", ""),
     ];
     for (name, query, zip) in cases {
         let k = kommuner::find(name).unwrap();
@@ -30,9 +53,17 @@ async fn town_halls() {
             }
         };
         println!("  {} adresser, f.eks. {:?}", found.len(), found.first());
+        if found.is_empty() {
+            continue;
+        }
         let Some(a) = found.first() else { continue };
-        c.prepare(k, &a.id).await.unwrap();
-        let p = c.pickups(k, &a.id).await.unwrap();
+        let p = match c.pickups(k, &a.id).await {
+            Ok(p) => p,
+            Err(e) => {
+                println!("  fejl: {e}");
+                continue;
+            }
+        };
         for f in schedule::fractions(&p, today) {
             println!("  {:<40} {} ({} datoer) {:?}", f.name, f.dates[0], f.dates.len(), f.descriptions);
         }

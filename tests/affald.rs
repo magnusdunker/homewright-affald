@@ -225,13 +225,21 @@ async fn unknown_address_and_dead_server() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn perfect_waste_registers_the_address_first() {
+async fn perfect_waste_looks_up_an_address_it_does_not_know() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/fetchAddressAndSaveToDb"))
         .and(body_partial_json(json!({ "data": { "addressID": "77", "municipality": 265 } })))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "result": {} })))
         .expect(1)
+        .mount(&server)
+        .await;
+    // nothing the first time, as for an address its app has not seen
+    Mock::given(method("POST"))
+        .and(path("/getAddressCollections"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "result": [] })))
+        .up_to_n_times(1)
+        .with_priority(1)
         .mount(&server)
         .await;
     Mock::given(method("POST"))
@@ -250,4 +258,25 @@ async fn perfect_waste_registers_the_address_first() {
     assert_eq!(attrs["dates"], json!(["2030-10-28", "2030-11-11"]));
     let (_, attrs) = h.state(&h.entity_ending("t_mning")).unwrap();
     assert_eq!(attrs["fractions"], json!(["Pappi", "Restaffald-Madaffald"]));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn perfect_waste_leaves_a_known_address_alone() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/fetchAddressAndSaveToDb"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "result": {} })))
+        .expect(0)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/getAddressCollections"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "result": [
+            { "date": "2030-10-28T00:00:00.000Z", "fractions": [{ "fractionName": "Rest" }] },
+        ]})))
+        .mount(&server)
+        .await;
+    let k = homewright_affald::kommuner::find("Albertslund").unwrap();
+    let p = api::Client::new(Some(&server.uri())).pickups(k, "77").await.unwrap();
+    assert_eq!(p, vec![Pickup { date: d("2030-10-28"), fraction: "Rest".into() }]);
 }
