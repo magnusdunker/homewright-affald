@@ -3,7 +3,7 @@ name = "homewright-affald"
 version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Tømmedage for affald fra de danske kommuner som ekstern integration til Homewright"
+description = "Tømmedage for affald fra de danske kommuner som ekstern integration til HomewrightHQ"
 publish = false
 
 [[bin]]
@@ -11,7 +11,7 @@ name = "affald"
 path = "src/main.rs"
 
 [dependencies]
-homewright-plugin = { package = "thehome-plugin", git = "https://github.com/magnusdunker/homewright-example-integration-rust", rev = "a8f05c1859f6689b2a31d2188593eb872408385e" }
+homewright-plugin = { package = "thehome-plugin", git = "https://github.com/magnusdunker/homewrighthq-example-integration-rust", rev = "a8f05c1859f6689b2a31d2188593eb872408385e" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "native-tls-vendored", "cookies"] }

@@ -1,13 +1,13 @@
-# Affaldskalender til Homewright
+# Affaldskalender til HomewrightHQ
 
-En ekstern integration til [Homewright](https://github.com/magnusdunker/homewright), der henter tømmedagene for affald fra kommunerne.
+En ekstern integration til [HomewrightHQ](https://github.com/magnusdunker/homewrighthq), der henter tømmedagene for affald fra kommunerne.
 
 ## Installation
 
-I Homewright: **Indstillinger → Integrationer → Fra GitHub**. Indsæt
+I HomewrightHQ: **Indstillinger → Integrationer → Fra GitHub**. Indsæt
 
 ```
-https://github.com/magnusdunker/homewright-affald
+https://github.com/magnusdunker/homewrighthq-affald
 ```
 
 og tryk **Installér**. Tilføj derefter **Affaldskalender** under **Tilføj integration**. Vælg kommunen og skriv vejnavn og husnummer. Passer flere adresser, vælger du din på en liste; et postnummer eller husnummerets bogstav gør listen kortere. Hver adresse er sin egen opsætning, så sommerhuset kan komme med ved siden af.
@@ -64,15 +64,15 @@ Hvilken kommune der bruger hvilket system, og hvordan systemerne svarer, kommer 
 
 ## Udvikling
 
-Bygget i Rust på SDK'en `thehome-plugin` fra [homewright-example-integration-rust](https://github.com/magnusdunker/homewright-example-integration-rust).
+Bygget i Rust på SDK'en `thehome-plugin` fra [homewright-example-integration-rust](https://github.com/magnusdunker/homewrighthq-example-integration-rust).
 
 - `src/api.rs`: de systemer, mange kommuner deler, og opslaget i dem
 - `src/sources.rs`: systemerne med én eller få kommuner hver
 - `src/pdf.rs`: tømningskalenderen som PDF fra affaldonline.dk
 - `src/kommuner.rs`: kommunerne og deres system
 - `src/schedule.rs`: fra tømninger til én sensor pr. slags affald
-- `src/lib.rs`: forbindelsen til Homewright
-- `tests/affald.rs` og `tests/sources.rs`: tests mod falske servere, og en falsk Homewright i `tests/host`
+- `src/lib.rs`: forbindelsen til HomewrightHQ
+- `tests/affald.rs` og `tests/sources.rs`: tests mod falske servere, og en falsk HomewrightHQ i `tests/host`
 - `tests/live.rs`: slår rådhuse og andre adresser op i de rigtige systemer, `cargo test --test live -- --ignored --nocapture`
 
 ```

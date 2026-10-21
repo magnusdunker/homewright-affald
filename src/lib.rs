@@ -1,5 +1,5 @@
 //! Pickup days for household waste from the Danish kommuner, as an external
-//! integration for Homewright.
+//! integration for HomewrightHQ.
 //!
 //! An entry is one address. Each kind of waste picked up there becomes a date
 //! sensor with the next pickup, and one more sensor tells the next pickup of
@@ -30,7 +30,7 @@ const RETRY: StdDuration = StdDuration::from_secs(1800);
 /// How many matches the address step offers.
 const MAX_MATCHES: usize = 100;
 
-/// Logging to Homewright's log through stderr.
+/// Logging to HomewrightHQ's log through stderr.
 #[doc(hidden)]
 pub fn emit(level: &str, message: String) {
     homewright_plugin::log(level, message);

@@ -149,7 +149,7 @@ impl Client {
     fn builder() -> reqwest::ClientBuilder {
         // some of the servers answer browsers only
         reqwest::Client::builder()
-            .user_agent(concat!("Mozilla/5.0 (compatible; Homewright-affald/", env!("CARGO_PKG_VERSION"), ")"))
+            .user_agent(concat!("Mozilla/5.0 (compatible; HomewrightHQ-affald/", env!("CARGO_PKG_VERSION"), ")"))
             .timeout(Duration::from_secs(30))
     }
 

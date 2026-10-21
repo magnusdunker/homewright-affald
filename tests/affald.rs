@@ -1,5 +1,5 @@
 //! Parsing against responses shaped like the real ones, and the plugin
-//! against a fake RenoWeb and Perfect Waste, with Homewright played over a
+//! against a fake RenoWeb and Perfect Waste, with HomewrightHQ played over a
 //! pipe.
 
 mod host;
