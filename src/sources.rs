@@ -268,9 +268,19 @@ impl Client {
         Ok(out)
     }
 
+    /// A flat shares the building's bins, and the dates are only on the
+    /// building's own address, so those are looked up when the flat has none.
     pub(crate) async fn infovision_pickups(&self, id: &str) -> Result<Vec<Pickup>, ApiError> {
         let v = self.json(self.infovision(&format!("container/address/active/{}", segment(id)))).await?;
-        Ok(parse_infovision(&v))
+        let mut out = parse_infovision(&v, None);
+        if out.is_empty() {
+            let (owners, chains) = infovision_shared(&v, id);
+            for owner in owners.iter().take(3) {
+                let w = self.json(self.infovision(&format!("container/address/active/{}", segment(owner)))).await?;
+                out.extend(parse_infovision(&w, Some(&chains)));
+            }
+        }
+        Ok(out)
     }
 
     // Provas (Haderslev) -----------------------------------------------------
@@ -488,19 +498,63 @@ pub fn parse_wastewatch(v: &Value) -> Vec<Pickup> {
         .collect()
 }
 
-pub fn parse_infovision(v: &Value) -> Vec<Pickup> {
+/// The containers as (chain, container details, the chain's dates). The
+/// answer is grouped in chains the address owns, has with no fee and uses;
+/// an older form was the containers as a plain list.
+fn infovision_containers(v: &Value) -> Vec<(Option<String>, &Value, &Value)> {
+    if let Some(a) = v.as_array() {
+        return a.iter().map(|c| (None, c, &Value::Null)).collect();
+    }
     let mut out = vec![];
-    for c in v.as_array().into_iter().flatten() {
+    for group in ["chainDetailsOwn", "chainDetailsZero", "chainDetailsUse"] {
+        for chain in v[group].as_array().into_iter().flatten() {
+            for c in chain["containerDetails"].as_array().into_iter().flatten() {
+                out.push((str_of(&chain["chain"]), c, &chain["calendarDates"]));
+            }
+        }
+    }
+    out
+}
+
+/// The containers' dates, from `collectCalendar` or else the chain's
+/// `calendarDates`. With `only`, just those chains.
+pub fn parse_infovision(v: &Value, only: Option<&HashSet<String>>) -> Vec<Pickup> {
+    let mut out = vec![];
+    for (chain, c, chain_dates) in infovision_containers(v) {
+        if let Some(only) = only {
+            if !chain.as_ref().is_some_and(|ch| only.contains(ch)) {
+                continue;
+            }
+        }
         let t = &c["containerType"];
         let Some(name) = str_of(&t["description"]).or_else(|| str_of(&t["fraction"]["description"])) else { continue };
-        for d in c["collectCalendar"].as_array().into_iter().flatten() {
-            let raw = d["collectDate"].as_i64().map(|n| n.to_string()).or_else(|| str_of(&d["collectDate"]));
+        let own: Vec<&Value> = c["collectCalendar"].as_array().into_iter().flatten().map(|d| &d["collectDate"]).collect();
+        let days = if own.is_empty() { chain_dates.as_array().into_iter().flatten().collect() } else { own };
+        for d in days {
+            let raw = d.as_i64().map(|n| n.to_string()).or_else(|| str_of(d));
             if let Some(day) = raw.and_then(|r| NaiveDate::parse_from_str(&r, "%Y%m%d").ok()) {
                 out.push(Pickup { date: day, fraction: name.clone() });
             }
         }
     }
     out
+}
+
+/// For an address that only uses other addresses' containers: those
+/// addresses and the chains in question.
+pub fn infovision_shared(v: &Value, id: &str) -> (Vec<String>, HashSet<String>) {
+    let mut owners = vec![];
+    let mut chains = HashSet::new();
+    for (chain, c, _) in infovision_containers(v) {
+        let Some(owner) = str_of(&c["container"]["addressGuid"]) else { continue };
+        if owner != id {
+            if !owners.contains(&owner) {
+                owners.push(owner);
+            }
+            chains.extend(chain);
+        }
+    }
+    (owners, chains)
 }
 
 pub fn parse_provas(v: &Value) -> Vec<Pickup> {

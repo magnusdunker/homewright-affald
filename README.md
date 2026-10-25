@@ -53,10 +53,17 @@ Kalenderen hentes fire gange i døgnet, og sensorerne rykker videre ved midnat. 
 
 Silkeborgs kalender viser kun dagene, ikke hvad der hentes, så der bliver det én sensor, "Tømning". Herning oplyser ugedag og uger for hver beholder, og datoerne regnes ud fra dem; flytninger på grund af helligdage kommer ikke med.
 
+I Kolding hører beholderne til bygningens adresse. Vælger du en lejlighed, henter integrationen datoerne fra bygningens adresse. Er lejligheden ikke knyttet til nogen beholder i Koldings system, får den ingen sensorer; vælg så bygningens adresse uden etage.
+
 Tre kommuner mangler:
 
 - Ringsted og Hedensted: tømmekalenderen findes kun i RenoWebs selvbetjening, der kræver login med MitID.
 - Læsø: Læsø Forsyning har ingen tømmekalender på nettet.
+
+Ikke afprøvet:
+
+- Kolding: beholdere, som adressen har uden gebyr (`chainDetailsZero`), læses som de andre, men der er ikke fundet en adresse med sådan en.
+- Kolding: en lejlighed, der deler beholdere med mere end tre adresser, får kun datoerne fra de tre første.
 
 Vestforbrændings server forstår kun ældre krypteringsmetoder, som rustls ikke har. Integrationen bruger derfor systemets egen TLS til den, og OpenSSL er bygget ind i Linux-udgaven.
 

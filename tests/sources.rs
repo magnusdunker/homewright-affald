@@ -8,7 +8,7 @@ use homewright_affald::api::{Client, Pickup};
 use homewright_affald::kommuner;
 use homewright_affald::schedule::clean;
 use homewright_affald::{pdf, sources};
-use serde_json::json;
+use serde_json::{json, Value};
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -64,7 +64,7 @@ fn json_systems() {
           "collectCalendar": [{ "collectDate": 20301022 }, { "collectDate": 20301029 }] },
         { "containerType": { "description": "Farligt affald - 21 L" }, "collectCalendar": [] },
     ]);
-    assert_eq!(sources::parse_infovision(&v), vec![p("2030-10-22", "240 L beholder til madaffald"), p("2030-10-29", "240 L beholder til madaffald")]);
+    assert_eq!(sources::parse_infovision(&v, None), vec![p("2030-10-22", "240 L beholder til madaffald"), p("2030-10-29", "240 L beholder til madaffald")]);
 
     let v = json!([{ "date": "2030-10-20", "container": { "waste_fraction": { "name": "Pap/papir" } } }]);
     assert_eq!(sources::parse_provas(&v), vec![p("2030-10-20", "Pap/papir")]);
@@ -176,6 +176,44 @@ async fn kolding_finds_the_house_number() {
     let ids = |v: Vec<homewright_affald::api::Address>| v.into_iter().map(|a| a.id).collect::<Vec<_>>();
     assert_eq!(ids(c.search(k, "Testvej 3", None).await.unwrap()), vec!["a3", "a3a"]);
     assert_eq!(ids(c.search(k, "Testvej 3a", None).await.unwrap()), vec!["a3a"]);
+}
+
+/// Trimmed from Kolding's answers in October 2026: the building has the
+/// bins and the dates, a flat in it only uses them.
+#[tokio::test(flavor = "multi_thread")]
+async fn kolding_flat_gets_the_building_dates() {
+    let container = |chain: &str, owner: &str, name: &str, own: Value| {
+        json!({ "chain": chain, "containerDetails": [{
+            "container": { "guid": chain, "addressGuid": owner },
+            "containerType": { "description": name, "fraction": { "description": "Rest/Madaffald" } },
+            "collectCalendar": own,
+        }], "calendarDates": [] })
+    };
+    let mut rest = container("c1", "b1", "400 L beholder til restaffald", json!([{ "collectCalendarGuid": "0", "collectDate": 20301021 }]));
+    rest["calendarDates"] = json!([20301021]);
+    let mut glass = container("c2", "b1", "400 L beholder til glas og metal", json!([]));
+    glass["calendarDates"] = json!([20301025, 20301122]);
+    let other = container("c3", "b1", "Farligt affald - 21 L", json!([]));
+    let building = json!({ "chainDetailsOwn": [rest, glass, other], "chainDetailsZero": [], "chainDetailsUse": [] });
+    let flat = json!({ "chainDetailsOwn": [], "chainDetailsZero": [], "chainDetailsUse": [
+        container("c1", "b1", "400 L beholder til restaffald", json!([])),
+        container("c2", "b1", "400 L beholder til glas og metal", json!([])),
+    ] });
+
+    let server = MockServer::start().await;
+    for (id, body) in [("b1", building), ("f1", flat)] {
+        Mock::given(method("GET"))
+            .and(path(format!("/api/publiccitizen/container/address/active/{id}")))
+            .and(header("publicAccessToken", "__NetDialogCitizenPublicAccessToken__"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+    }
+    let c = Client::new(Some(&server.uri()));
+    let k = kommuner::find("Kolding").unwrap();
+    let want = vec![p("2030-10-21", "400 L beholder til restaffald"), p("2030-10-25", "400 L beholder til glas og metal"), p("2030-11-22", "400 L beholder til glas og metal")];
+    assert_eq!(c.pickups(k, "b1").await.unwrap(), want);
+    assert_eq!(c.pickups(k, "f1").await.unwrap(), want);
 }
 
 #[tokio::test(flavor = "multi_thread")]
