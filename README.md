@@ -1,43 +1,43 @@
-# Affaldskalender til HomewrightHQ
+# Affaldskalender for HomewrightHQ
 
-En ekstern integration til [HomewrightHQ](https://github.com/magnusdunker/homewrighthq), der henter tømmedagene for affald fra kommunerne.
+An external integration for [HomewrightHQ](https://github.com/magnusdunker/homewrighthq) that fetches the waste collection days from the Danish municipalities.
 
 ## Installation
 
-I HomewrightHQ: **Indstillinger → Integrationer → Fra GitHub**. Indsæt
+In HomewrightHQ: **Settings → Integrations → From GitHub**. Paste
 
 ```
 https://github.com/magnusdunker/homewrighthq-affald
 ```
 
-og tryk **Installér**. Tilføj derefter **Affaldskalender** under **Tilføj integration**. Vælg kommunen og skriv vejnavn og husnummer. Passer flere adresser, vælger du din på en liste; et postnummer eller husnummerets bogstav gør listen kortere. Hver adresse er sin egen opsætning, så sommerhuset kan komme med ved siden af.
+and press **Install**. Then add **Affaldskalender** under **Add integration**. Choose the municipality and enter the street name and house number. If several addresses match, you pick yours from a list; a postcode or the house number's letter makes the list shorter. Each address is its own entry, so the summer house can be added alongside.
 
-## Hvad du får
+## What you get
 
-Adressen bliver en enhed, "Affald Skolevej 5, ...", med en datosensor for hver slags affald, kommunen henter der:
+The address becomes a device, "Affald Skolevej 5, ...", with a date sensor for each kind of waste the municipality collects there:
 
-- tilstanden er næste tømmedag, f.eks. `2026-10-28`
-- `days`: dage til da, `0` på selve dagen
-- `dates`: de næste op til 12 tømmedage
-- `description`: kommunens egne navne for det, sensoren dækker
+- the state is the next collection day, e.g. `2026-10-28`
+- `days`: days until then, `0` on the day itself
+- `dates`: the next up to 12 collection days
+- `description`: the municipality's own names for what the sensor covers
 
-Sensoren **Næste tømning** viser den næste dag, hvor der bliver hentet noget, og i `fractions` hvad der hentes.
+The sensor **Næste tømning** (next collection) shows the next day something is collected, and `fractions` lists what is collected.
 
-Navnene er kommunens egne, uden beholderstørrelser og postdistrikt: "240 L Dagrenovation" bliver til "Dagrenovation". To beholdere med samme slags affald bliver til én sensor. Dukker en ny slags op i kalenderen, får den en sensor med det samme.
+The names are the municipality's own, without container sizes and postal district: "240 L Dagrenovation" becomes "Dagrenovation". Two containers with the same kind of waste become one sensor. If a new kind shows up in the calendar, it gets a sensor straight away.
 
-Kalenderen hentes fire gange i døgnet, og sensorerne rykker videre ved midnat. Nogle systemer oplyser kun den næste tømning for hver beholder (RenoWeb, Reno Djurs og Affald KBH), så der har `dates` kun én dato.
+The calendar is fetched four times a day, and the sensors move on at midnight. Some systems only give the next collection for each container (RenoWeb, Reno Djurs and Affald KBH), so there `dates` has only one date.
 
-## Kommuner
+## Municipalities
 
-95 af landets 98 kommuner, fordelt på de systemer, de bruger:
+95 of the country's 98 municipalities, grouped by the system they use:
 
-| System | Kommuner |
+| System | Municipalities |
 |---|---|
 | Perfect Waste | Albertslund, Allerød, Ballerup, Faxe, Frederiksberg, Frederikssund, Gladsaxe, Greve, Gribskov, Guldborgsund, Halsnæs, Helsingør, Hillerød, Horsens, Hvidovre, Høje-Taastrup, Hørsholm, Kalundborg, Køge, Lejre, Lolland, Lyngby-Taarbæk, Næstved, Odsherred, Ringkøbing-Skjern, Roskilde, Rudersdal, Slagelse, Solrød, Stevns, Tårnby, Vejen |
 | RenoWeb | Aabenraa, Aalborg, Billund, Bornholm, Brøndby, Brønderslev, Dragør, Egedal, Esbjerg, Fredensborg, Gentofte, Glostrup, Hjørring, Jammerbugt, Kerteminde, Mariagerfjord, Randers, Rødovre, Samsø, Svendborg, Sønderborg, Varde, Vordingborg |
 | AffaldOnline | Assens, Faaborg-Midtfyn, Favrskov, Holbæk, Langeland, Morsø, Rebild, Vejle, Viborg, Ærø |
-| AffaldOnline, tømningskalenderen som PDF | Fanø, Middelfart, Nyborg, Sorø |
-| AffaldOnline, kun datoerne | Silkeborg |
+| AffaldOnline, collection calendar as PDF | Fanø, Middelfart, Nyborg, Sorø |
+| AffaldOnline, dates only | Silkeborg |
 | OpenExperience | Fredericia, Holstebro, Lemvig, Nordfyns, Skive, Struer, Thisted |
 | Vestforbrænding | Furesø, Herlev, Ishøj, Vallensbæk |
 | Renomatic | Frederikshavn, Ikast-Brande, Vesthimmerlands |
@@ -51,44 +51,44 @@ Kalenderen hentes fire gange i døgnet, og sensorerne rykker videre ved midnat. 
 | WasteWatch | Tønder |
 | Odense Renovation | Odense |
 
-Silkeborgs kalender viser kun dagene, ikke hvad der hentes, så der bliver det én sensor, "Tømning". Herning oplyser ugedag og uger for hver beholder, og datoerne regnes ud fra dem; flytninger på grund af helligdage kommer ikke med.
+Silkeborg's calendar only shows the days, not what is collected, so there it becomes one sensor, "Tømning". Herning gives the weekday and weeks for each container, and the dates are worked out from them; moves because of public holidays are not included.
 
-I Kolding hører beholderne til bygningens adresse. Vælger du en lejlighed, henter integrationen datoerne fra bygningens adresse. Er lejligheden ikke knyttet til nogen beholder i Koldings system, får den ingen sensorer; vælg så bygningens adresse uden etage.
+In Kolding the containers belong to the building's address. If you choose a flat, the integration fetches the dates from the building's address. If the flat is not linked to any container in Kolding's system, it gets no sensors; in that case choose the building's address without a floor.
 
-Tre kommuner mangler:
+Three municipalities are missing:
 
-- Ringsted og Hedensted: tømmekalenderen findes kun i RenoWebs selvbetjening, der kræver login med MitID.
-- Læsø: Læsø Forsyning har ingen tømmekalender på nettet.
+- Ringsted and Hedensted: the collection calendar is only in RenoWeb's self-service, which requires login with MitID.
+- Læsø: Læsø Forsyning has no collection calendar online.
 
-Ikke afprøvet:
+Not tested:
 
-- Kolding: beholdere, som adressen har uden gebyr (`chainDetailsZero`), læses som de andre, men der er ikke fundet en adresse med sådan en.
-- Kolding: en lejlighed, der deler beholdere med mere end tre adresser, får kun datoerne fra de tre første.
+- Kolding: containers the address has without a fee (`chainDetailsZero`) are read like the others, but no address with one has been found.
+- Kolding: a flat that shares containers with more than three addresses only gets the dates from the first three.
 
-Vestforbrændings server forstår kun ældre krypteringsmetoder, som rustls ikke har. Integrationen bruger derfor systemets egen TLS til den, og OpenSSL er bygget ind i Linux-udgaven.
+Vestforbrænding's server only understands older encryption methods, which rustls does not have. The integration therefore uses the system's own TLS for it, and OpenSSL is built into the Linux version.
 
-Hvilken kommune der bruger hvilket system, og hvordan systemerne svarer, kommer fra [AffaldDK](https://github.com/briis/affalddk) til Home Assistant (MIT). Integrationen bruger de samme åbne adresser og nøgler som kommunernes egne apps og hjemmesider og logger ikke ind nogen steder. Til adressesøgningen i Aarhus, Odder, Skanderborg og Tønder bruger den Klimadatastyrelsens Adressevælger med dens offentlige demonøgle.
+Which municipality uses which system, and how the systems respond, comes from [AffaldDK](https://github.com/briis/affalddk) for Home Assistant (MIT). The integration uses the same open addresses and keys as the municipalities' own apps and websites and does not log in anywhere. For the address search in Aarhus, Odder, Skanderborg and Tønder it uses Klimadatastyrelsen's Adressevælger with its public demo key.
 
-## Udvikling
+## Development
 
-Bygget i Rust på SDK'en `thehome-plugin` fra [homewright-example-integration-rust](https://github.com/magnusdunker/homewrighthq-example-integration-rust).
+Built in Rust on the `thehome-plugin` SDK from [homewright-example-integration-rust](https://github.com/magnusdunker/homewrighthq-example-integration-rust).
 
-- `src/api.rs`: de systemer, mange kommuner deler, og opslaget i dem
-- `src/sources.rs`: systemerne med én eller få kommuner hver
-- `src/pdf.rs`: tømningskalenderen som PDF fra affaldonline.dk
-- `src/kommuner.rs`: kommunerne og deres system
-- `src/schedule.rs`: fra tømninger til én sensor pr. slags affald
-- `src/lib.rs`: forbindelsen til HomewrightHQ
-- `tests/affald.rs` og `tests/sources.rs`: tests mod falske servere, og en falsk HomewrightHQ i `tests/host`
-- `tests/live.rs`: slår rådhuse og andre adresser op i de rigtige systemer, `cargo test --test live -- --ignored --nocapture`
+- `src/api.rs`: the systems many municipalities share, and the lookup in them
+- `src/sources.rs`: the systems with one or a few municipalities each
+- `src/pdf.rs`: the collection calendar as PDF from affaldonline.dk
+- `src/kommuner.rs`: the municipalities and their system
+- `src/schedule.rs`: from collections to one sensor per kind of waste
+- `src/lib.rs`: the connection to HomewrightHQ
+- `tests/affald.rs` and `tests/sources.rs`: tests against fake servers, and a fake HomewrightHQ in `tests/host`
+- `tests/live.rs`: looks up town halls and other addresses in the real systems, `cargo test --test live -- --ignored --nocapture`
 
 ```
 cargo test
 cargo build --release
 ```
 
-En ny version udgives med et tag, f.eks. `git tag v0.2.0 && git push origin v0.2.0`. Workflowet bygger til Windows, Linux (x86_64 og arm64, statisk musl) og macOS og lægger binærerne og `homewright.json` på releasen.
+A new version is released with a tag, e.g. `git tag v0.2.0 && git push origin v0.2.0`. The workflow builds for Windows, Linux (x86_64 and arm64, static musl) and macOS and puts the binaries and `homewright.json` on the release.
 
-## Licens
+## License
 
 MIT
